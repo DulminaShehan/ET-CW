@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(\"/c/Users/LOQ/AppData/Local/Android/Sdk/emulator/emulator\" -avd Medium_Phone_API_36.1)",
+      "Bash(java -version)",
+      "Bash(JAVA_HOME=\"/c/Program Files/Android/openjdk/jdk-21.0.8\" npx expo run:android)",
+      "Bash(\"/c/Users/LOQ/AppData/Local/Android/Sdk/emulator/emulator\" -avd Medium_Phone_API_36.1 -no-snapshot-load)",
+      "Bash(\"/c/Users/LOQ/AppData/Local/Android/Sdk/platform-tools/adb\" wait-for-device:*)",
+      "Bash(\"/c/Users/LOQ/AppData/Local/Android/Sdk/platform-tools/adb\" shell:*)",
+      "Bash(\"/c/Users/LOQ/AppData/Local/Android/Sdk/platform-tools/adb\" install:*)"
+    ]
+  }
+}

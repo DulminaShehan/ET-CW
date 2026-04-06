@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :8081)",
+      "Read(//d/ET-CW/**)",
+      "Bash(xargs taskkill:*)",
+      "Bash(\"%LOCALAPPDATA%/Android/Sdk/emulator/emulator.exe\" -list-avds)",
+      "Bash(\"/c/Users/LOQ/AppData/Local/Android/Sdk/emulator/emulator\" -list-avds)"
+    ]
+  }
+}
