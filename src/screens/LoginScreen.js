@@ -1,15 +1,46 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  StatusBar, KeyboardAvoidingView, Platform, ScrollView,
+  StatusBar, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { ref, get } from 'firebase/database';
+import { auth, database } from '../firebase';
 import FireGuardLogo from '../components/FireGuardLogo';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleLogin = async () => {
+    setError('');
+    if (!email || !password) {
+      setError('Please enter email and password.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const snap = await get(ref(database, `users/${cred.user.uid}/role`));
+      const role = snap.exists() ? snap.val() : 'hiker';
+      navigation.navigate('Dashboard', { role });
+    } catch (e) {
+      console.error('Login error:', e);
+      if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+        setError('Invalid email or password.');
+      } else if (e.code === 'auth/invalid-email') {
+        setError('Invalid email address.');
+      } else {
+        setError(e.message || 'Login failed. Try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -55,12 +86,15 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.forgotText}>Forgot Password?</Text>
         </TouchableOpacity>
 
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('Dashboard', { role: 'officer' })}
+          onPress={handleLogin}
           activeOpacity={0.85}
+          disabled={loading}
         >
-          <Text style={styles.buttonText}>Sign In</Text>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Sign In</Text>}
         </TouchableOpacity>
 
         <View style={styles.footerRow}>
@@ -135,6 +169,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#2D4F7C',
     fontWeight: '600',
+  },
+  errorText: {
+    color: '#E05252',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 10,
+    fontWeight: '500',
   },
   button: {
     backgroundColor: '#2D4F7C',

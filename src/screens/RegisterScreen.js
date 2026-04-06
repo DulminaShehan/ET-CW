@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, StatusBar, KeyboardAvoidingView, Platform,
+  ScrollView, StatusBar, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { ref, set } from 'firebase/database';
+import { auth, database } from '../firebase';
 import FireGuardLogo from '../components/FireGuardLogo';
 
 export default function RegisterScreen({ navigation }) {
@@ -12,6 +15,43 @@ export default function RegisterScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('hiker');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleRegister = async () => {
+    setError('');
+    if (!fullName || !email || !password) {
+      setError('Please fill in all fields.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(cred.user, { displayName: fullName });
+      await set(ref(database, `users/${cred.user.uid}`), {
+        name: fullName,
+        email,
+        role,
+        createdAt: Date.now(),
+      });
+      navigation.navigate('Dashboard', { role });
+    } catch (e) {
+      console.error('Register error:', e);
+      if (e.code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Please sign in.');
+      } else if (e.code === 'auth/invalid-email') {
+        setError('Invalid email address.');
+      } else {
+        setError(e.message || 'Registration failed. Try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -84,12 +124,15 @@ export default function RegisterScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('Dashboard', { role })}
+          onPress={handleRegister}
+          disabled={loading}
           activeOpacity={0.85}
         >
-          <Text style={styles.buttonText}>Create Account</Text>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Create Account</Text>}
         </TouchableOpacity>
 
         <View style={styles.footerRow}>
@@ -191,6 +234,13 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
     marginTop: 2,
+  },
+  errorText: {
+    color: '#E05252',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 10,
+    fontWeight: '500',
   },
   button: {
     backgroundColor: '#2D4F7C',

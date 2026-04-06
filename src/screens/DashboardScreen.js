@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import MapSection from '../components/MapSection';
 
 const DEVICES = {
@@ -37,6 +38,58 @@ export default function DashboardScreen({ navigation, route }) {
   const device = DEVICES[activeDevice];
   const role = route?.params?.role || 'officer';
   const isHiker = role === 'hiker';
+  const [muted, setMuted] = useState(false);
+  const soundRef = useRef(null);
+
+  // Play alarm when fire detected and not muted
+  useEffect(() => {
+    const isFire = device.status === 'FIRE';
+
+    const playAlarm = async () => {
+      try {
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+        if (soundRef.current) {
+          await soundRef.current.unloadAsync();
+          soundRef.current = null;
+        }
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: 'https://www.soundjay.com/misc/sounds/fail-buzzer-04.mp3' },
+          { shouldPlay: true, isLooping: true, volume: 1.0 }
+        );
+        soundRef.current = sound;
+      } catch (e) {
+        console.log('Sound error:', e);
+      }
+    };
+
+    const stopAlarm = async () => {
+      try {
+        if (soundRef.current) {
+          await soundRef.current.stopAsync();
+          await soundRef.current.unloadAsync();
+          soundRef.current = null;
+        }
+      } catch (e) {}
+    };
+
+    if (isFire && !muted) {
+      playAlarm();
+    } else {
+      stopAlarm();
+    }
+
+    return () => { stopAlarm(); };
+  }, [device.status, muted]);
+
+  // Stop sound on unmount
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.stopAsync().catch(() => {});
+        soundRef.current.unloadAsync().catch(() => {});
+      }
+    };
+  }, []);
 
   return (
     <View style={styles.outer}>
@@ -59,25 +112,37 @@ export default function DashboardScreen({ navigation, route }) {
         </View>
       </View>
 
-      {/* Device Tabs — Officer only */}
-      {!isHiker && (
-        <View style={styles.tabRow}>
-          {[1, 2].map((d) => (
-            <TouchableOpacity
-              key={d}
-              style={[styles.tab, activeDevice === d && styles.tabActive]}
-              onPress={() => setActiveDevice(d)}
-            >
-              <Ionicons name="radio" size={14} color={activeDevice === d ? '#fff' : '#555'} />
-              <Text style={[styles.tabText, activeDevice === d && styles.tabTextActive]}>
-                DEVICE 0{d}
-              </Text>
-              <View style={[
-                styles.tabDot,
-                { backgroundColor: DEVICES[d].online ? '#4CAF50' : '#E05252' },
-              ]} />
-            </TouchableOpacity>
-          ))}
+      {/* Device Tabs — visible to all */}
+      <View style={styles.tabRow}>
+        {[1, 2].map((d) => (
+          <TouchableOpacity
+            key={d}
+            style={[styles.tab, activeDevice === d && styles.tabActive]}
+            onPress={() => setActiveDevice(d)}
+          >
+            <Ionicons name="radio" size={14} color={activeDevice === d ? '#fff' : '#555'} />
+            <Text style={[styles.tabText, activeDevice === d && styles.tabTextActive]}>
+              DEVICE 0{d}
+            </Text>
+            <View style={[
+              styles.tabDot,
+              { backgroundColor: DEVICES[d].online ? '#4CAF50' : '#E05252' },
+            ]} />
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Fire Alert Banner — visible to ALL users */}
+      {device.status === 'FIRE' && (
+        <View style={styles.alertBanner}>
+          <Ionicons name="flame" size={20} color="#fff" />
+          <View style={styles.alertBannerText}>
+            <Text style={styles.alertBannerTitle}>🔥 FIRE DETECTED — {device.name}</Text>
+            <Text style={styles.alertBannerSub}>Evacuate immediately. Emergency services notified.</Text>
+          </View>
+          <TouchableOpacity onPress={() => setMuted(!muted)} style={styles.alertMuteBtn}>
+            <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={20} color="#fff" />
+          </TouchableOpacity>
         </View>
       )}
 
@@ -176,8 +241,20 @@ export default function DashboardScreen({ navigation, route }) {
 
         {/* Map */}
         <MapSection deviceId={activeDevice} />
-        <View style={styles.mapLabel}>
-          <Text style={styles.mapLabelText}>{device.mapLabel}</Text>
+        <View style={styles.mapLabelRow}>
+          <View style={styles.mapLabel}>
+            <Text style={styles.mapLabelText}>{device.mapLabel}</Text>
+          </View>
+          {/* AR Camera button — Officer only, fire detected */}
+          {!isHiker && device.status === 'FIRE' && (
+            <TouchableOpacity
+              style={styles.arButton}
+              onPress={() => navigation.navigate('ARCamera', { deviceId: activeDevice })}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="camera" size={20} color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Flame Sensors — Officer only */}
@@ -381,19 +458,68 @@ const styles = StyleSheet.create({
     marginTop: 1,
     textAlign: 'center',
   },
+  mapLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    marginBottom: 4,
+  },
   mapLabel: {
     backgroundColor: '#E05252',
     alignSelf: 'flex-start',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    marginTop: 6,
-    marginBottom: 4,
   },
   mapLabelText: {
     color: '#fff',
     fontSize: 11,
     fontWeight: '700',
+  },
+  alertBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E05252',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  alertBannerText: {
+    flex: 1,
+  },
+  alertBannerTitle: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  alertBannerSub: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  alertMuteBtn: {
+    padding: 4,
+  },
+  muteBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: '#E05252',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  muteBtnActive: {
+    borderColor: '#ccc',
+  },
+  arButton: {
+    backgroundColor: '#2D4F7C',
+    borderRadius: 20,
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   flameGrid: {
     flexDirection: 'row',
