@@ -90,11 +90,11 @@ export default function ARCameraScreen({ navigation, route }) {
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       <CameraView style={styles.camera} facing="back">
         <AROverlay device={device} pulseAnim={pulseAnim} scanTranslateY={scanTranslateY} />
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
-          <Text style={styles.backText}>Back</Text>
-        </TouchableOpacity>
       </CameraView>
+      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <Ionicons name="arrow-back" size={22} color="#fff" />
+        <Text style={styles.backText}>Back</Text>
+      </TouchableOpacity>
     </View>
   );
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import MapSection from '../components/MapSection';
@@ -92,7 +93,7 @@ export default function DashboardScreen({ navigation, route }) {
   }, []);
 
   return (
-    <View style={styles.outer}>
+    <SafeAreaView style={styles.outer}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       {/* Header */}
@@ -245,8 +246,8 @@ export default function DashboardScreen({ navigation, route }) {
           <View style={styles.mapLabel}>
             <Text style={styles.mapLabelText}>{device.mapLabel}</Text>
           </View>
-          {/* AR Camera button — Officer only, fire detected */}
-          {!isHiker && device.status === 'FIRE' && (
+          {/* AR Camera button — Officer only */}
+          {!isHiker && (
             <TouchableOpacity
               style={styles.arButton}
               onPress={() => navigation.navigate('ARCamera', { deviceId: activeDevice })}
@@ -276,7 +277,7 @@ export default function DashboardScreen({ navigation, route }) {
           </>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

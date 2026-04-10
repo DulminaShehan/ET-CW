@@ -29,7 +29,7 @@ export default function LoginScreen({ navigation }) {
       const role = snap.exists() ? snap.val() : 'hiker';
       navigation.navigate('Dashboard', { role });
     } catch (e) {
-      console.error('Login error:', e);
+      console.log('Login error:', e.code);
       if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
         setError('Invalid email or password.');
       } else if (e.code === 'auth/invalid-email') {
